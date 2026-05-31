@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Navigate AFTER React has committed the user state to avoid race conditions
+  useEffect(() => {
+    if (user) navigate('/', { replace: true });
+  }, [user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +33,7 @@ export default function LoginPage() {
       setLoading(true);
       await login(username.trim(), password);
       toast.success('Welcome back!');
-      navigate('/');
+      // Navigation is handled by the useEffect above once user state updates
     } catch (err) {
       const errMsg = err.response?.data?.error || 'Login failed. Please check your credentials.';
       setError(errMsg);
