@@ -3,7 +3,6 @@ services:
   - type: web
     name: trackx-api
     runtime: node
-    plan: free
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
@@ -23,7 +22,6 @@ services:
   - type: web
     name: trackx-frontend
     runtime: static
-    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
