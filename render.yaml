@@ -25,6 +25,9 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false # Set this to your backend Render URL (e.g. https://trackx-api.onrender.com/api) to connect the frontend to the backend
     routes:
       # Rewrite all requests to index.html for client-side React routing (fixes 404s on page refresh or deep links)
       - type: rewrite
