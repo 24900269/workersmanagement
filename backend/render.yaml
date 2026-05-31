@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: trackx-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_PATH
+        value: /var/data/trackx.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false   # Set this in Render dashboard to your Vercel URL
+
+# Persistent disk for SQLite database
+# NOTE: Persistent disk requires a paid Render plan.
+# On the free plan, data resets on each deploy.
+# Uncomment the section below if you have a paid plan:
+#
+# disks:
+#   - name: trackx-data
+#     mountPath: /var/data
+#     sizeGB: 1
