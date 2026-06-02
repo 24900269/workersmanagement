@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   uid           TEXT    UNIQUE NOT NULL,           -- Public user ID e.g. "TXU-8F3K2P"
-  username      TEXT    UNIQUE NOT NULL,
+  username      TEXT    UNIQUE NOT NULL COLLATE NOCASE,
   password_hash TEXT    NOT NULL,
   is_admin      INTEGER NOT NULL DEFAULT 0,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

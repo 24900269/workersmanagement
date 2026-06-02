@@ -47,56 +47,77 @@ function safeUser(user) {
 
 // ─── POST /api/auth/register ─────────────────────────────────
 router.post('/register', async (req, res, next) => {
+  const ip = req.ip || req.headers['x-forwarded-for'];
   try {
     const { username, password } = registerSchema.parse(req.body);
+    console.log(`[AUTH-AUDIT] Registration attempt for username: "${username}" from IP: ${ip}`);
 
-    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    // Check existing case-insensitively
+    const existing = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(username);
     if (existing) {
+      console.warn(`[AUTH-AUDIT] Registration failed: Username "${username}" already taken. User ID: ${existing.id}`);
       return res.status(409).json({ error: 'Username already taken' });
     }
 
+    console.log(`[AUTH-AUDIT] Starting bcrypt hashing for username: "${username}"`);
     const password_hash = await bcrypt.hash(password, 12);
     const uid = generateUID();
+    console.log(`[AUTH-AUDIT] Hashing completed. Generated unique public UID: "${uid}"`);
 
     const result = db
       .prepare('INSERT INTO users (uid, username, password_hash) VALUES (?, ?, ?)')
       .run(uid, username, password_hash);
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+    console.log(`[AUTH-AUDIT] Registration successful! Created User ID: ${user.id}, UID: "${user.uid}", Username: "${user.username}"`);
+
     const token = signToken(user.id);
+    console.log(`[AUTH-AUDIT] JWT issued successfully for User ID: ${user.id}`);
 
     res.status(201).json({ token, user: safeUser(user) });
   } catch (err) {
     if (err instanceof z.ZodError) {
+      console.warn(`[AUTH-AUDIT] Registration validation failed: ${err.errors[0].message}`);
       return res.status(400).json({ error: err.errors[0].message });
     }
+    console.error(`[AUTH-ERROR] Exception in registration: ${err.message}\n${err.stack}`);
     next(err);
   }
 });
 
 // ─── POST /api/auth/login ─────────────────────────────────────
 router.post('/login', async (req, res, next) => {
+  const ip = req.ip || req.headers['x-forwarded-for'];
   try {
     const { username, password } = loginSchema.parse(req.body);
+    console.log(`[AUTH-AUDIT] Login attempt for credentials: "${username}" from IP: ${ip}`);
 
-    const user = db.prepare('SELECT * FROM users WHERE username = ? OR uid = ?').get(username, username);
-    // Use constant-time compare to prevent user enumeration
+    // Search case-insensitively
+    const user = db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR uid = ?').get(username, username);
     if (!user) {
+      console.warn(`[AUTH-AUDIT] Login failed: User "${username}" not found in database. Performing dummy hash.`);
       await bcrypt.hash(password, 12); // dummy hash to prevent timing attack
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
+    console.log(`[AUTH-AUDIT] User found in database (ID: ${user.id}, UID: "${user.uid}"). Checking bcrypt password match...`);
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
+      console.warn(`[AUTH-AUDIT] Login failed: Password mismatch for user ID: ${user.id}`);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
+    console.log(`[AUTH-AUDIT] Password valid! Generating session token for User ID: ${user.id}`);
     const token = signToken(user.id);
+    console.log(`[AUTH-AUDIT] Login successful! Session token issued for User ID: ${user.id}`);
+
     res.json({ token, user: safeUser(user) });
   } catch (err) {
     if (err instanceof z.ZodError) {
+      console.warn(`[AUTH-AUDIT] Login validation failed: ${err.errors[0].message}`);
       return res.status(400).json({ error: err.errors[0].message });
     }
+    console.error(`[AUTH-ERROR] Exception in login: ${err.message}\n${err.stack}`);
     next(err);
   }
 });

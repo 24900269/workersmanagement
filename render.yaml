@@ -3,9 +3,14 @@ services:
   - type: web
     name: trackx-api
     runtime: node
+    plan: starter # Paid plan (Starter) is required to use a persistent disk for SQLite
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
+    disk:
+      name: trackx-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production

@@ -8,12 +8,19 @@ const db = require('../db/database');
 function verifyToken(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
+    console.warn(`[AUTH-AUDIT] Token verification failed: Missing or malformed Authorization header from IP: ${req.ip}`);
     return res.status(401).json({ error: 'Authentication required' });
   }
 
   const token = auth.slice(7); // remove "Bearer "
+  const shortToken = token.length > 20 ? `${token.substring(0, 10)}...${token.substring(token.length - 10)}` : 'short-token';
+  
   try {
+    // Print verification attempt
+    console.log(`[AUTH-AUDIT] Verifying token: "${shortToken}" (JWT_SECRET length: ${process.env.JWT_SECRET?.length || 0})`);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    console.log(`[AUTH-AUDIT] Token signature verified successfully. Decoded User ID: ${decoded.id}`);
 
     // Confirm user still exists in DB
     const user = db
@@ -21,12 +28,15 @@ function verifyToken(req, res, next) {
       .get(decoded.id);
 
     if (!user) {
+      console.warn(`[AUTH-AUDIT] Token verified but user ID: ${decoded.id} no longer exists in database. Wiping session...`);
       return res.status(401).json({ error: 'User not found' });
     }
 
+    console.log(`[AUTH-AUDIT] Session active and validated. User: "${user.username}" (ID: ${user.id})`);
     req.user = user;
     next();
   } catch (err) {
+    console.warn(`[AUTH-AUDIT] Token verification failed for "${shortToken}". Error: ${err.message}`);
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
