@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../api/client';
 import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { setSession } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -37,9 +38,9 @@ export default function RegisterPage() {
 
     try {
       setLoading(true);
-      const user = await register(username.trim(), password);
+      const { data } = await api.post('/auth/register', { username: username.trim(), password });
       toast.success('Registration successful!');
-      setRegisteredUser(user);
+      setRegisteredUser(data);
     } catch (err) {
       const errMsg = err.response?.data?.error || 'Registration failed. Try a different username.';
       setError(errMsg);
@@ -50,6 +51,9 @@ export default function RegisterPage() {
   };
 
   const handleProceed = () => {
+    if (registeredUser) {
+      setSession(registeredUser.user, registeredUser.token);
+    }
     navigate('/');
   };
 
@@ -76,11 +80,11 @@ export default function RegisterPage() {
 
             <div className="uid-badge">
               <div className="uid-label">YOUR UNIQUE USER ID</div>
-              <div className="uid-value">{registeredUser.uid}</div>
+              <div className="uid-value">{registeredUser.user.uid}</div>
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '24px' }}>
-              Welcome to TrackX, {registeredUser.username}. You are now ready to manage your construction workforce.
+              Welcome to TrackX, {registeredUser.user.username}. You are now ready to manage your construction workforce.
             </p>
 
             <button onClick={handleProceed} className="btn-primary">

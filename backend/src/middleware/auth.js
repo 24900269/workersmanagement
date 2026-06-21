@@ -7,12 +7,19 @@ const db = require('../db/database');
  */
 function verifyToken(req, res, next) {
   const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) {
-    console.warn(`[AUTH-AUDIT] Token verification failed: Missing or malformed Authorization header from IP: ${req.ip}`);
+  
+  if (!auth) {
+    console.warn(`[AUTH-AUDIT] Token verification failed: Missing Authorization header from IP: ${req.ip}`);
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  const token = auth.slice(7); // remove "Bearer "
+  const parts = auth.trim().split(/\s+/);
+  if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
+    console.warn(`[AUTH-AUDIT] Token verification failed: Malformed Authorization header ("${auth}") from IP: ${req.ip}`);
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const token = parts[1];
   const shortToken = token.length > 20 ? `${token.substring(0, 10)}...${token.substring(token.length - 10)}` : 'short-token';
   
   try {
@@ -36,8 +43,12 @@ function verifyToken(req, res, next) {
     req.user = user;
     next();
   } catch (err) {
-    console.warn(`[AUTH-AUDIT] Token verification failed for "${shortToken}". Error: ${err.message}`);
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    if (err.name === 'TokenExpiredError') {
+      console.warn(`[AUTH-AUDIT] Token verification failed for "${shortToken}": Expired token. Error: ${err.message}`);
+      return res.status(401).json({ error: 'Expired token' });
+    }
+    console.warn(`[AUTH-AUDIT] Token verification failed for "${shortToken}": Invalid token. Error: ${err.message}`);
+    return res.status(401).json({ error: 'Invalid token' });
   }
 }
 

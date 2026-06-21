@@ -45,8 +45,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const setSession = useCallback((userVal, tokenVal) => {
+    localStorage.setItem('trackx_token', tokenVal);
+    localStorage.setItem('trackx_user', JSON.stringify(userVal));
+    setUser(userVal);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, setSession }}>
       {children}
     </AuthContext.Provider>
   );
